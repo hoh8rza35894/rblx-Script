@@ -382,6 +382,28 @@ local function setAFK(on)
 	end
 end
 
+local function setFrameChildrenVisible(visible)
+	for _,v in pairs(frame:GetChildren()) do
+		if v ~= header and v:IsA("GuiObject") then
+			v.Visible = visible
+		end
+	end
+end
+
+local function setMinimized(on, instant)
+	minimized = on
+	setFrameChildrenVisible(not on)
+
+	local targetSize = on and UDim2.new(0, 260, 0, 35) or UDim2.new(0, 260, 0, 210)
+	if instant then
+		frame.Size = targetSize
+	else
+		TweenService:Create(frame, TweenInfo.new(0.3), {Size = targetSize}):Play()
+	end
+
+	minimizeBtn.Text = on and "+" or "–"
+end
+
 --== ปุ่มเปิด/ปิด Auto ==--
 toggle.MouseButton1Click:Connect(function()
 	parseInterval()
@@ -407,28 +429,11 @@ parseInterval()
 setToggle(true)
 runNowThenSchedule()
 setAFK(true)
+setMinimized(true, true)
 
 --== ปุ่มย่อ ==--
 minimizeBtn.MouseButton1Click:Connect(function()
-	if minimized then
-		TweenService:Create(frame, TweenInfo.new(0.3), {Size = UDim2.new(0, 260, 0, 210)}):Play()
-		for _,v in pairs(frame:GetChildren()) do
-			if v ~= header and v:IsA("GuiObject") then
-				v.Visible = true
-			end
-		end
-		minimizeBtn.Text = "–"
-		minimized = false
-	else
-		for _,v in pairs(frame:GetChildren()) do
-			if v ~= header and v:IsA("GuiObject") then
-				v.Visible = false
-			end
-		end
-		TweenService:Create(frame, TweenInfo.new(0.3), {Size = UDim2.new(0, 260, 0, 35)}):Play()
-		minimizeBtn.Text = "+"
-		minimized = true
-	end
+	setMinimized(not minimized)
 end)
 
 --== ปุ่มปิด ==--
