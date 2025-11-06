@@ -95,27 +95,6 @@ frameStroke.Thickness = 1.5
 frameStroke.Transparency = 0.3
 frameStroke.Parent = frame
 
--- Shadow effect
-local shadow = Instance.new("Frame")
-shadow.Size = UDim2.new(1, 4, 1, 4)
-shadow.Position = UDim2.new(0, -2, 0, -2)
-shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-shadow.BackgroundTransparency = 0.7
-shadow.BorderSizePixel = 0
-shadow.ZIndex = frame.ZIndex - 1
-local shadowCorner = Instance.new("UICorner")
-shadowCorner.CornerRadius = UDim.new(0, 12)
-shadowCorner.Parent = shadow
-shadow.Parent = gui
-
--- ให้ shadow ติดตาม frame position
-frame:GetPropertyChangedSignal("Position"):Connect(function()
-	shadow.Position = UDim2.new(frame.Position.X.Scale, frame.Position.X.Offset - 2, frame.Position.Y.Scale, frame.Position.Y.Offset - 2)
-end)
-frame:GetPropertyChangedSignal("Size"):Connect(function()
-	shadow.Size = UDim2.new(frame.Size.X.Scale, frame.Size.X.Offset + 4, frame.Size.Y.Scale, frame.Size.Y.Offset + 4)
-end)
-
 -- Header bar
 local header = Instance.new("Frame", frame)
 header.Size = UDim2.new(1, 0, 0, 35)
@@ -429,7 +408,6 @@ end)
 minimizeBtn.MouseButton1Click:Connect(function()
 	if minimized then
 		TweenService:Create(frame, TweenInfo.new(0.3), {Size = UDim2.new(0, 260, 0, 210)}):Play()
-		TweenService:Create(shadow, TweenInfo.new(0.3), {Size = UDim2.new(1, 4, 1, 4)}):Play()
 		for _,v in pairs(frame:GetChildren()) do
 			if v ~= header then v.Visible = true end
 		end
@@ -440,7 +418,6 @@ minimizeBtn.MouseButton1Click:Connect(function()
 			if v ~= header then v.Visible = false end
 		end
 		TweenService:Create(frame, TweenInfo.new(0.3), {Size = UDim2.new(0, 260, 0, 35)}):Play()
-		TweenService:Create(shadow, TweenInfo.new(0.3), {Size = UDim2.new(1, 4, 0, 39)}):Play()
 		minimizeBtn.Text = "+"
 		minimized = true
 	end
