@@ -220,7 +220,7 @@ ClearPointsCorner.Parent = ClearPointsButton
 local LoadList = Instance.new("ScrollingFrame")
 LoadList.Name = "LoadList"
 LoadList.Size = UDim2.new(1, -10, 0, 130)
-LoadList.Position = UDim2.new(0, 5, 0, 70)
+LoadList.Position = UDim2.new(0, 5, 0, 105)
 LoadList.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 LoadList.BackgroundTransparency = 0.3
 LoadList.BorderSizePixel = 0
@@ -235,6 +235,38 @@ local LoadListLayout = Instance.new("UIListLayout")
 LoadListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 LoadListLayout.Padding = UDim.new(0, 2)
 LoadListLayout.Parent = LoadList
+
+-- Saved Points Search Box
+local SavedSearchFrame = Instance.new("Frame")
+SavedSearchFrame.Size = UDim2.new(1, -10, 0, 30)
+SavedSearchFrame.Position = UDim2.new(0, 5, 0, 70)
+SavedSearchFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+SavedSearchFrame.BackgroundTransparency = 0.3
+SavedSearchFrame.BorderSizePixel = 0
+
+local SavedSearchCorner = Instance.new("UICorner")
+SavedSearchCorner.CornerRadius = UDim.new(0, 4)
+SavedSearchCorner.Parent = SavedSearchFrame
+
+local SavedSearchIcon = Instance.new("TextLabel")
+SavedSearchIcon.Size = UDim2.new(0, 25, 0, 25)
+SavedSearchIcon.Position = UDim2.new(0, 5, 0, 2.5)
+SavedSearchIcon.BackgroundTransparency = 1
+SavedSearchIcon.Text = "🔍"
+SavedSearchIcon.TextSize = 14
+SavedSearchIcon.Font = Enum.Font.SourceSans
+SavedSearchIcon.Parent = SavedSearchFrame
+
+local SavedSearchBox = Instance.new("TextBox")
+SavedSearchBox.Size = UDim2.new(1, -35, 0, 25)
+SavedSearchBox.Position = UDim2.new(0, 30, 0, 2.5)
+SavedSearchBox.BackgroundTransparency = 1
+SavedSearchBox.Text = "ค้นหาจุด..."
+SavedSearchBox.TextColor3 = Color3.fromRGB(200, 200, 200)
+SavedSearchBox.TextSize = 12
+SavedSearchBox.Font = Enum.Font.SourceSans
+SavedSearchBox.ClearTextOnFocus = true
+SavedSearchBox.Parent = SavedSearchFrame
 
 -- Configuration Section
 local ConfigSection = Instance.new("Frame")
@@ -381,6 +413,7 @@ SavePointFrame.Parent = SaveSection
 SaveInput.Parent = SavePointFrame
 SaveButton.Parent = SavePointFrame
 ClearPointsButton.Parent = SavePointFrame
+SavedSearchFrame.Parent = SaveSection
 LoadList.Parent = SaveSection
 
 ConfigSection.Parent = MainFrame
@@ -403,6 +436,7 @@ local CurrentConfig = nil
 local IsVisible = true
 local LastRefresh = 0
 local ConfigFilePath = "TeleportConfigs.json"
+local CurrentSavedSearchFilter = ""
 
 -- Functions
 local function Tween(Object, Properties, Duration)
@@ -458,8 +492,10 @@ local function TeleportTo(Position)
             wait(0.1)
         end
 
-        -- Tween teleport
-        Tween(HumanoidRootPart, {CFrame = CFrame.new(Position)}, 0.5)
+        -- Instant warp teleport
+        HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        HumanoidRootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+        HumanoidRootPart.CFrame = CFrame.new(Position)
         CreateNotification("Teleported successfully!", 2)
     else
         CreateNotification("Character not found!", 2)
@@ -530,15 +566,19 @@ local function RefreshPlayers(SearchFilter)
     PlayerList.CanvasSize = UDim2.new(0, 0, 0, #PlayerButtons * 32)
 end
 
-local function RefreshSavedPoints()
+local function RefreshSavedPoints(SearchFilter)
+    SearchFilter = SearchFilter or ""
+    local loweredFilter = string.lower(SearchFilter)
     -- Clear existing buttons
     for _, Button in pairs(LoadButtons) do
         Button:Destroy()
     end
     LoadButtons = {}
 
-    -- Create buttons for each saved point
+    -- Create buttons for each saved point (with search filter)
     for Name, Position in pairs(SavedPoints) do
+        local lowerName = string.lower(tostring(Name))
+        if loweredFilter == "" or string.find(lowerName, loweredFilter, 1, true) then
         local PointFrame = Instance.new("Frame")
         PointFrame.Size = UDim2.new(1, -10, 0, 30)
         PointFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
@@ -608,6 +648,7 @@ local function RefreshSavedPoints()
 
         PointFrame.Parent = LoadList
         table.insert(LoadButtons, PointFrame)
+        end
     end
 
     -- Update canvas size
@@ -762,7 +803,7 @@ SaveButton.MouseButton1Click:Connect(function()
                 RefreshConfigurations()
             end
             SaveInput.Text = "Point Name"
-            RefreshSavedPoints()
+            RefreshSavedPoints(CurrentSavedSearchFilter)
             CreateNotification("Point '" .. PointName .. "' saved!", 2)
         else
             CreateNotification("Character not found!", 2)
@@ -808,7 +849,7 @@ ClearPointsButton.MouseButton1Click:Connect(function()
             Configurations[CurrentConfig].PointCount = 0
             SaveConfigurations()
         end
-        RefreshSavedPoints()
+        RefreshSavedPoints(CurrentSavedSearchFilter)
             CreateNotification("ลบจุดทั้งหมดแล้ว!", 2)
     else
         CreateNotification("ไม่มีจุดให้ลบ!", 2)
@@ -822,7 +863,7 @@ ClearConfigsButton.MouseButton1Click:Connect(function()
         CurrentConfig = nil
         SavedPoints = {}
         RefreshConfigurations()
-        RefreshSavedPoints()
+        RefreshSavedPoints(CurrentSavedSearchFilter)
         CreateNotification("ลบการตั้งค่าทั้งหมดแล้ว!", 2)
     else
         CreateNotification("ไม่มีการตั้งค่าให้ลบ!", 2)
@@ -879,6 +920,31 @@ SearchBox.FocusLost:Connect(function(enterPressed)
     end
 end)
 
+-- Saved points search functionality
+SavedSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+    CurrentSavedSearchFilter = SavedSearchBox.Text or ""
+    if CurrentSavedSearchFilter == "ค้นหาจุด..." then
+        CurrentSavedSearchFilter = ""
+    end
+    RefreshSavedPoints(CurrentSavedSearchFilter)
+end)
+
+SavedSearchBox.Focused:Connect(function()
+    if SavedSearchBox.Text == "ค้นหาจุด..." then
+        SavedSearchBox.Text = ""
+        SavedSearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    end
+end)
+
+SavedSearchBox.FocusLost:Connect(function()
+    if SavedSearchBox.Text == "" then
+        SavedSearchBox.Text = "ค้นหาจุด..."
+        SavedSearchBox.TextColor3 = Color3.fromRGB(200, 200, 200)
+        CurrentSavedSearchFilter = ""
+        RefreshSavedPoints()
+    end
+end)
+
 -- Auto refresh players every 3 seconds
 while true do
     wait(3)
@@ -893,6 +959,7 @@ end
 local configsLoaded = LoadConfigurations()
 RefreshPlayers()
 RefreshConfigurations()
+RefreshSavedPoints()
 if configsLoaded then
     local configCount = 0
     for _ in pairs(Configurations) do
