@@ -258,8 +258,8 @@ statusLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 local afkToggle = Instance.new("TextButton", frame)
 afkToggle.Size = UDim2.new(0, 220, 0, 36)
 afkToggle.Position = UDim2.new(0, 20, 0, 158)
-afkToggle.BackgroundColor3 = Color3.fromRGB(70, 200, 70)
-afkToggle.Text = "AFK: ON"
+afkToggle.BackgroundColor3 = Color3.fromRGB(200, 70, 70)
+afkToggle.Text = "AFK: OFF"
 afkToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 afkToggle.Font = Enum.Font.GothamBold
 afkToggle.TextSize = 15
@@ -277,7 +277,8 @@ afkStroke.Parent = afkToggle
 
 -- Hover effect
 afkToggle.MouseEnter:Connect(function()
-	TweenService:Create(afkToggle, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(90, 220, 90)}):Play()
+	local hoverColor = afkEnabled and Color3.fromRGB(90, 220, 90) or Color3.fromRGB(220, 90, 90)
+	TweenService:Create(afkToggle, TweenInfo.new(0.2), {BackgroundColor3 = hoverColor}):Play()
 end)
 afkToggle.MouseLeave:Connect(function()
 	local targetColor = afkEnabled and Color3.fromRGB(70, 200, 70) or Color3.fromRGB(200, 70, 70)
@@ -290,7 +291,7 @@ local interval = DEFAULT_INTERVAL
 local worker
 local minimized = false
 local debounce = false
-local afkEnabled = true -- AFK เปิดอยู่โดย default
+local afkEnabled = false -- AFK ปิดอยู่โดย default
 local jumpWorker = nil
 
 --== ฟังก์ชัน ==--
