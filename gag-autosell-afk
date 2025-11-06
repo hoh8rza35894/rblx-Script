@@ -1,0 +1,317 @@
+--== CONFIG ==--
+local TARGET_CFRAME = CFrame.new(87, 3, 0)
+local DEFAULT_INTERVAL = 300 -- วินาที
+
+--== SERVICES ==--
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local UIS = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local PlayerGui = player:WaitForChild("PlayerGui")
+
+-- ถ้ามีอยู่แล้วให้ลบทิ้งก่อน (กันซ้ำเวลาเทส)
+local old = PlayerGui:FindFirstChild("AutoSellUI")
+if old then old:Destroy() end
+
+local GameEvents = ReplicatedStorage:WaitForChild("GameEvents")
+local SellEvent = GameEvents:WaitForChild("Sell_Inventory")
+
+--== ฟังก์ชันขาย ==--
+local function tpSellAndReturn()
+	local char = player.Character or player.CharacterAdded:Wait()
+	local root = char:WaitForChild("HumanoidRootPart")
+	local humanoid = char:WaitForChild("Humanoid")
+
+	local originalCFrame = root.CFrame
+	local oldWalk, oldJump = humanoid.WalkSpeed, humanoid.JumpPower
+	humanoid.WalkSpeed, humanoid.JumpPower = 0, 0
+
+	char:PivotTo(TARGET_CFRAME)
+	task.wait(0.15)
+	SellEvent:FireServer()
+	task.wait(0.3)
+	char:PivotTo(originalCFrame)
+
+	humanoid.WalkSpeed, humanoid.JumpPower = oldWalk, oldJump
+end
+
+--== ฟังก์ชันลาก ==--
+local function dragify(handle, target)
+	local dragging, dragInput, startPos, startInputPos
+	handle.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			startPos = target.Position
+			startInputPos = input.Position
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then dragging = false end
+			end)
+		end
+	end)
+
+	handle.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+
+	UIS.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			local delta = input.Position - startInputPos
+			target.Position = UDim2.new(
+				startPos.X.Scale, startPos.X.Offset + delta.X,
+				startPos.Y.Scale, startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
+end
+
+--== GUI หลัก ==--
+local gui = Instance.new("ScreenGui")
+gui.Name = "AutoSellUI"
+gui.ResetOnSpawn = false
+gui.Parent = PlayerGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 240, 0, 190)
+frame.Position = UDim2.new(0.05, 0, 0.25, 0)
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+frame.BackgroundTransparency = 0.2
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Parent = gui
+
+-- Header bar
+local header = Instance.new("Frame", frame)
+header.Size = UDim2.new(1, 0, 0, 28)
+header.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+header.BorderSizePixel = 0
+header.Active = true
+header.Draggable = false -- ใช้ dragify แทน
+
+local title = Instance.new("TextLabel", header)
+title.Size = UDim2.new(1, -60, 1, 0)
+title.Position = UDim2.new(0, 8, 0, 0)
+title.Text = "⚙️ Auto Sell Config"
+title.TextColor3 = Color3.new(1,1,1)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 18
+title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- ปุ่มย่อ
+local minimizeBtn = Instance.new("TextButton", header)
+minimizeBtn.Size = UDim2.new(0, 25, 0, 25)
+minimizeBtn.Position = UDim2.new(1, -55, 0, 1)
+minimizeBtn.Text = "–"
+minimizeBtn.Font = Enum.Font.SourceSansBold
+minimizeBtn.TextSize = 18
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+minimizeBtn.TextColor3 = Color3.new(1,1,1)
+minimizeBtn.BorderSizePixel = 0
+
+-- ปุ่มปิด
+local closeBtn = Instance.new("TextButton", header)
+closeBtn.Size = UDim2.new(0, 25, 0, 25)
+closeBtn.Position = UDim2.new(1, -28, 0, 1)
+closeBtn.Text = "×"
+closeBtn.Font = Enum.Font.SourceSansBold
+closeBtn.TextSize = 18
+closeBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+closeBtn.TextColor3 = Color3.new(1,1,1)
+closeBtn.BorderSizePixel = 0
+
+--== เนื้อหาภายใน ==--
+local toggle = Instance.new("TextButton", frame)
+toggle.Size = UDim2.new(0, 190, 0, 30)
+toggle.Position = UDim2.new(0, 25, 0, 40)
+toggle.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+toggle.Text = "Auto Sell: OFF"
+toggle.TextColor3 = Color3.new(1,1,1)
+toggle.Font = Enum.Font.SourceSansBold
+toggle.TextSize = 16
+toggle.AutoButtonColor = false
+
+local inputLabel = Instance.new("TextLabel", frame)
+inputLabel.Size = UDim2.new(0, 110, 0, 20)
+inputLabel.Position = UDim2.new(0, 20, 0, 80)
+inputLabel.BackgroundTransparency = 1
+inputLabel.Text = "Interval (sec):"
+inputLabel.TextColor3 = Color3.new(1,1,1)
+inputLabel.Font = Enum.Font.SourceSans
+inputLabel.TextSize = 14
+
+local intervalBox = Instance.new("TextBox", frame)
+intervalBox.Size = UDim2.new(0, 80, 0, 25)
+intervalBox.Position = UDim2.new(0, 130, 0, 80)
+intervalBox.Text = tostring(DEFAULT_INTERVAL)
+intervalBox.TextColor3 = Color3.new(1,1,1)
+intervalBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+intervalBox.ClearTextOnFocus = false
+intervalBox.Font = Enum.Font.SourceSans
+intervalBox.TextSize = 14
+
+local statusLabel = Instance.new("TextLabel", frame)
+statusLabel.Size = UDim2.new(1, -20, 0, 18)
+statusLabel.Position = UDim2.new(0, 10, 0, 115)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "Status: Idle"
+statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+statusLabel.Font = Enum.Font.SourceSans
+statusLabel.TextSize = 14
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- ปุ่มเปิด/ปิด AFK
+local afkToggle = Instance.new("TextButton", frame)
+afkToggle.Size = UDim2.new(0, 190, 0, 30)
+afkToggle.Position = UDim2.new(0, 25, 0, 145)
+afkToggle.BackgroundColor3 = Color3.fromRGB(60, 180, 60)
+afkToggle.Text = "AFK: ON"
+afkToggle.TextColor3 = Color3.new(1,1,1)
+afkToggle.Font = Enum.Font.SourceSansBold
+afkToggle.TextSize = 16
+afkToggle.AutoButtonColor = false
+
+--== ตัวแปรสถานะ ==--
+local enabled = false
+local interval = DEFAULT_INTERVAL
+local worker
+local minimized = false
+local debounce = false
+local afkEnabled = true -- AFK เปิดอยู่โดย default
+local jumpWorker = nil
+
+--== ฟังก์ชัน ==--
+local function parseInterval()
+	local n = tonumber(intervalBox.Text)
+	if not n or n <= 0 then
+		intervalBox.Text = tostring(interval)
+		return interval
+	end
+	interval = math.floor(n)
+	return interval
+end
+
+local function setToggle(on)
+	enabled = on
+	if on then
+		toggle.Text = "Auto Sell: ON"
+		TweenService:Create(toggle, TweenInfo.new(0.25), {BackgroundColor3 = Color3.fromRGB(60, 180, 60)}):Play()
+	else
+		toggle.Text = "Auto Sell: OFF"
+		TweenService:Create(toggle, TweenInfo.new(0.25), {BackgroundColor3 = Color3.fromRGB(180, 60, 60)}):Play()
+	end
+end
+
+local function runNowThenSchedule()
+	if debounce then return end
+	debounce = true
+	statusLabel.Text = "Status: Running…"
+	tpSellAndReturn()
+	statusLabel.Text = ("Status: Waiting %ds"):format(interval)
+
+	if worker then task.cancel(worker) end
+	worker = task.spawn(function()
+		while enabled do
+			local t = interval
+			local elapsed = 0
+			while enabled and elapsed < t do
+				local step = math.min(0.25, t - elapsed)
+				task.wait(step)
+				elapsed += step
+				statusLabel.Text = ("Status: Waiting %ds"):format(math.max(0, math.ceil(t - elapsed)))
+			end
+			if not enabled then break end
+			statusLabel.Text = "Status: Running…"
+			tpSellAndReturn()
+			statusLabel.Text = ("Status: Waiting %ds"):format(interval)
+		end
+	end)
+	debounce = false
+end
+
+--== ฟังก์ชันกระโดด ==--
+local function makeCharacterJump()
+	local char = player.Character
+	if char and char:FindFirstChild("Humanoid") then
+		char.Humanoid.Jump = true
+	end
+end
+
+--== ฟังก์ชันตั้งค่า AFK ==--
+local function setAFK(on)
+	afkEnabled = on
+	if on then
+		afkToggle.Text = "AFK: ON"
+		TweenService:Create(afkToggle, TweenInfo.new(0.25), {BackgroundColor3 = Color3.fromRGB(60, 180, 60)}):Play()
+		-- หยุดการกระโดด
+		if jumpWorker then
+			task.cancel(jumpWorker)
+			jumpWorker = nil
+		end
+	else
+		afkToggle.Text = "AFK: OFF"
+		TweenService:Create(afkToggle, TweenInfo.new(0.25), {BackgroundColor3 = Color3.fromRGB(180, 60, 60)}):Play()
+		-- เริ่มการกระโดดทุก 5 นาที
+		if jumpWorker then task.cancel(jumpWorker) end
+		jumpWorker = task.spawn(function()
+			while not afkEnabled do
+				task.wait(300) -- 5 นาที = 300 วินาที
+				if not afkEnabled then
+					makeCharacterJump()
+				end
+			end
+		end)
+	end
+end
+
+--== ปุ่มเปิด/ปิด Auto ==--
+toggle.MouseButton1Click:Connect(function()
+	parseInterval()
+	if not enabled then
+		setToggle(true)
+		runNowThenSchedule()
+	else
+		setToggle(false)
+		statusLabel.Text = "Status: Idle"
+		if worker then task.cancel(worker) worker = nil end
+	end
+end)
+
+intervalBox.FocusLost:Connect(parseInterval)
+
+--== ปุ่มเปิด/ปิด AFK ==--
+afkToggle.MouseButton1Click:Connect(function()
+	setAFK(not afkEnabled)
+end)
+
+--== ปุ่มย่อ ==--
+minimizeBtn.MouseButton1Click:Connect(function()
+	if minimized then
+		TweenService:Create(frame, TweenInfo.new(0.25), {Size = UDim2.new(0, 240, 0, 190)}):Play()
+		for _,v in pairs(frame:GetChildren()) do
+			if v ~= header then v.Visible = true end
+		end
+		minimizeBtn.Text = "–"
+		minimized = false
+	else
+		for _,v in pairs(frame:GetChildren()) do
+			if v ~= header then v.Visible = false end
+		end
+		TweenService:Create(frame, TweenInfo.new(0.25), {Size = UDim2.new(0, 150, 0, 28)}):Play()
+		minimizeBtn.Text = "+"
+		minimized = true
+	end
+end)
+
+--== ปุ่มปิด ==--
+closeBtn.MouseButton1Click:Connect(function()
+	if worker then task.cancel(worker) end
+	if jumpWorker then task.cancel(jumpWorker) end
+	gui:Destroy()
+end)
+
+--== เปิดฟังก์ชันลากทั้ง frame ด้วยหัว ==--
+dragify(header, frame)
