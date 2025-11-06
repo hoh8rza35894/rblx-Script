@@ -68,6 +68,15 @@ local function dragify(handle, target)
 	end)
 end
 
+--== ตัวแปรสถานะ ==--
+local enabled = false
+local interval = DEFAULT_INTERVAL
+local worker
+local minimized = false
+local debounce = false
+local afkEnabled = false -- AFK ปิดอยู่โดย default
+local jumpWorker = nil
+
 --== GUI หลัก ==--
 local gui = Instance.new("ScreenGui")
 gui.Name = "AutoSellUI"
@@ -284,15 +293,6 @@ afkToggle.MouseLeave:Connect(function()
 	local targetColor = afkEnabled and Color3.fromRGB(70, 200, 70) or Color3.fromRGB(200, 70, 70)
 	TweenService:Create(afkToggle, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
 end)
-
---== ตัวแปรสถานะ ==--
-local enabled = false
-local interval = DEFAULT_INTERVAL
-local worker
-local minimized = false
-local debounce = false
-local afkEnabled = false -- AFK ปิดอยู่โดย default
-local jumpWorker = nil
 
 --== ฟังก์ชัน ==--
 local function parseInterval()
